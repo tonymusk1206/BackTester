@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TQQQ 백테스터 프로</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>DYNAMIC <span class="neon-text">BACKTESTER</span></h1>
+            <p>모든 종목의 과거 데이터를 기반으로 최적의 투자 시뮬레이션을 경험하세요.</p>
+        </header>
+
+        <main class="main-content">
+            <section class="control-panel glass-panel">
+                <h2>투자 설정</h2>
+                <form id="simulation-form">
+                    <div class="form-group">
+                        <label for="ticker">티커 심볼 (Ticker)</label>
+                        <input type="text" id="ticker" name="ticker" value="TQQQ" placeholder="예: AAPL, TSLA, QQQ" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">투자 시작일</label>
+                        <input type="date" id="startDate" name="startDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="investmentType">투자 방식</label>
+                        <select id="investmentType" name="investmentType">
+                            <option value="lump_sum">거치식 (Lump Sum)</option>
+                            <option value="dca">분할매수식 (DCA)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="initialAmount">초기 투자 금액 ($)</label>
+                        <input type="number" id="initialAmount" name="initialAmount" value="10000" min="0">
+                    </div>
+
+                    <div class="form-group" id="monthlyAmountGroup" style="display: none;">
+                        <label for="monthlyAmount">매월 적립 금액 ($)</label>
+                        <input type="number" id="monthlyAmount" name="monthlyAmount" value="1000" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="stopLoss">손절 폭 (%) <span class="tooltip" title="0이면 손절하지 않음">ℹ️</span></label>
+                        <input type="number" id="stopLoss" name="stopLoss" value="0" min="0" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="takeProfit">익절 폭 (%) <span class="tooltip" title="0이면 익절하지 않음">ℹ️</span></label>
+                        <input type="number" id="takeProfit" name="takeProfit" value="0" min="0">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="runBtn">시뮬레이션 실행</button>
+                    <button type="button" class="btn btn-secondary" id="downloadBtn" disabled>엑셀 다운로드</button>
+                </form>
+            </section>
+
+            <section class="results-panel">
+                <div class="summary-cards">
+                    <div class="card glass-panel">
+                        <h3>최종 자산</h3>
+                        <p class="value" id="res-final-value">$0.00</p>
+                    </div>
+                    <div class="card glass-panel">
+                        <h3>총 투자원금</h3>
+                        <p class="value" id="res-total-invested">$0.00</p>
+                    </div>
+                    <div class="card glass-panel">
+                        <h3>총 수익률</h3>
+                        <p class="value" id="res-total-return">0.00%</p>
+                    </div>
+                    <div class="card glass-panel">
+                        <h3>연평균 수익률(CAGR)</h3>
+                        <p class="value highlight" id="res-cagr">0.00%</p>
+                    </div>
+                    <div class="card glass-panel">
+                        <h3>최대 낙폭(MDD)</h3>
+                        <p class="value danger" id="res-mdd">0.00%</p>
+                    </div>
+                </div>
+
+                <div class="chart-container glass-panel">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+
+                <div class="reports-grid">
+                    <div class="report-section glass-panel">
+                        <h3>일별 성과 리포트 (Daily)</h3>
+                        <div class="table-wrapper">
+                            <table id="daily-table">
+                                <thead>
+                                    <tr>
+                                        <th>날짜</th>
+                                        <th>시가 ($)</th>
+                                        <th>종가 ($)</th>
+                                        <th>일 수익률 (%)</th>
+                                        <th>누적 수익률 (%)</th>
+                                        <th>일별 MDD (%)</th>
+                                        <th>월간 MDD (%)</th>
+                                        <th>누적 MDD (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="daily-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="report-section glass-panel">
+                        <h3>월별 성과 리포트 (Monthly)</h3>
+                        <div class="table-wrapper">
+                            <table id="monthly-table">
+                                <thead>
+                                    <tr>
+                                        <th>년-월</th>
+                                        <th>시초가 ($)</th>
+                                        <th>기말가 ($)</th>
+                                        <th>월 수익률 (%)</th>
+                                        <th>누적 수익률 (%)</th>
+                                        <th>월간 MDD (%)</th>
+                                        <th>누적 MDD (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monthly-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <div id="loader" class="loader-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>시뮬레이션 중...</p>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
